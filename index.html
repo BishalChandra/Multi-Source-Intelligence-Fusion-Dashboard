@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Strategic Fusion Dashboard — SFD v2.4</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #05070c; font-family: 'Segoe UI', system-ui, sans-serif; color: #c8daf0; overflow: hidden; }
+
+    #sfd { display: flex; flex-direction: column; height: 100vh; background: #07090f; }
+
+    /* TOP BAR */
+    .topbar { height: 42px; background: #0c1018; border-bottom: 1px solid #1a2535; display: flex; align-items: center; padding: 0 16px; gap: 14px; flex-shrink: 0; }
+    .topbar-logo { font-size: 11px; font-weight: 600; letter-spacing: 0.16em; color: #3a7bd5; text-transform: uppercase; }
+    .topbar-sep { width: 1px; height: 18px; background: #1a2535; }
+    .topbar-tabs { display: flex; gap: 3px; }
+    .tab { font-size: 12px; padding: 5px 14px; border-radius: 5px; cursor: pointer; color: #4a6080; border: none; background: transparent; transition: all 0.15s; }
+    .tab:hover { color: #7ab3e8; background: #0f1825; }
+    .tab.active { background: #152030; color: #7ab3e8; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #3d9e6e; animation: blink 2s ease-in-out infinite; }
+    .live-txt { font-size: 11px; color: #2d7050; font-family: monospace; }
+    .clock { font-size: 11px; color: #2a3a50; font-family: monospace; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* MAIN LAYOUT */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* SIDEBAR */
+    .sidebar { width: 230px; min-width: 230px; background: #090c14; border-right: 1px solid #1a2535; display: flex; flex-direction: column; overflow: hidden; }
+    .sb-section { padding: 12px 16px; border-bottom: 1px solid #1a2535; }
+    .sb-label { font-size: 9px; font-weight: 600; letter-spacing: 0.14em; color: #2a3a50; text-transform: uppercase; margin-bottom: 8px; }
+    .src-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: background 0.12s; margin-bottom: 2px; }
+    .src-row:hover { background: #121c28; }
+    .src-row.on { background: #0f1c2e; }
+    .src-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .sd-o { background: #3a7bd5; } .sd-h { background: #e8a842; } .sd-i { background: #3dae7a; }
+    .src-name { font-size: 12px; color: #7a9ab8; flex: 1; }
+    .src-n { font-size: 11px; color: #2a3a50; font-family: monospace; }
+    .toggle { width: 28px; height: 15px; border-radius: 8px; border: 1px solid #1a2535; cursor: pointer; position: relative; transition: background 0.15s; flex-shrink: 0; }
+    .toggle.on { background: #1a3a5a; border-color: #3a7bd5; }
+    .toggle.off { background: #111820; }
+    .toggle-knob { position: absolute; top: 2px; width: 10px; height: 10px; border-radius: 50%; transition: left 0.15s; }
+    .toggle.on .toggle-knob { left: 15px; background: #3a7bd5; }
+    .toggle.off .toggle-knob { left: 2px; background: #2a3a50; }
+    .sb-stats { padding: 12px 16px; border-bottom: 1px solid #1a2535; }
+    .bar-row { margin-bottom: 9px; }
+    .bar-meta { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .bar-lbl { font-size: 10px; color: #2a3a50; }
+    .bar-val { font-size: 10px; color: #4a6080; font-family: monospace; }
+    .bar-track { height: 3px; background: #111820; border-radius: 2px; }
+    .bar-fill { height: 3px; border-radius: 2px; transition: width 0.4s; }
+    .sb-feed { padding: 12px 16px; flex: 1; overflow-y: auto; }
+    .feed-item { padding: 8px 10px; border-radius: 6px; background: #0c1220; border: 1px solid #1a2535; margin-bottom: 6px; cursor: pointer; transition: border-color 0.12s; }
+    .feed-item:hover { border-color: #2a3a50; }
+    .feed-time { font-size: 9px; color: #2a3a50; margin-bottom: 2px; font-family: monospace; }
+    .feed-txt { font-size: 10px; color: #7a9ab8; line-height: 1.5; }
+    .fbadge { display: inline-block; font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 3px; margin-bottom: 3px; letter-spacing: 0.06em; }
+    .fo { background: #0e2040; color: #3a7bd5; } .fh { background: #2a1e08; color: #e8a842; } .fi { background: #082018; color: #3dae7a; }
+
+    /* CONTENT */
+    .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .view-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .view-panel.active { display: flex; }
+
+    /* MAP */
+    .map-toolbar { height: 38px; background: #0c1018; border-bottom: 1px solid #1a2535; display: flex; align-items: center; padding: 0 14px; gap: 8px; flex-shrink: 0; }
+    .tbtn { font-size: 11px; color: #4a6080; padding: 4px 11px; border: 1px solid #1a2535; border-radius: 5px; cursor: pointer; background: transparent; transition: all 0.12s; }
+    .tbtn:hover, .tbtn.active { background: #0f1c2e; color: #7ab3e8; border-color: #2a3a5a; }
+    .coord-out { margin-left: auto; font-size: 10px; color: #1e2e3e; font-family: monospace; }
+    .map-wrap { flex: 1; position: relative; background: #0a1020; overflow: hidden; cursor: crosshair; }
+    .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .i-node { position: absolute; cursor: pointer; transform: translate(-50%, -50%); }
+    .nring { width: 24px; height: 24px; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; position: relative; transition: transform 0.15s; }
+    .i-node:hover .nring { transform: scale(1.4); }
+    .nring.o { border-color: #3a7bd5; background: #0a1e38; }
+    .nring.h { border-color: #e8a842; background: #201508; }
+    .nring.i { border-color: #3dae7a; background: #081a10; }
+    .ndot { width: 6px; height: 6px; border-radius: 50%; }
+    .ndot.o { background: #3a7bd5; } .ndot.h { background: #e8a842; } .ndot.i { background: #3dae7a; }
+    .pulse { position: absolute; inset: -6px; border-radius: 50%; border: 1px solid; opacity: 0; animation: pulse 3s ease-out infinite; }
+    .pulse.o { border-color: #3a7bd5; } .pulse.h { border-color: #e8a842; } .pulse.i { border-color: #3dae7a; }
+    @keyframes pulse { 0%{opacity:0.5;transform:scale(0.8)} 100%{opacity:0;transform:scale(2)} }
+    .map-popup { position: absolute; width: 220px; background: #0c1828; border: 1px solid #2a3a5a; border-radius: 9px; padding: 13px; z-index: 20; display: none; pointer-events: none; }
+    .map-popup.show { display: block; }
+    .pp-head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+    .pp-title { font-size: 13px; font-weight: 600; color: #c8daf0; flex: 1; }
+    .pp-badge { font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.06em; }
+    .pp-grid { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin-bottom: 8px; }
+    .pk { font-size: 10px; color: #2a4060; } .pv { font-size: 10px; color: #7a9ab8; }
+    .pp-img { height: 64px; background: #0a1420; border-radius: 5px; border: 1px solid #1a2a3a; display: flex; align-items: center; justify-content: center; }
+    .pp-img-lbl { font-size: 9px; color: #1e3050; text-align: center; padding: 4px; }
+
+    /* INGESTION */
+    .ingest-panel { padding: 18px; overflow-y: auto; flex: 1; }
+    .ingest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+    .ing-card { background: #0c1220; border: 1px solid #1a2535; border-radius: 9px; padding: 14px; }
+    .ing-title { font-size: 12px; font-weight: 600; color: #7a9ab8; margin-bottom: 3px; }
+    .ing-sub { font-size: 10px; color: #2a3a50; margin-bottom: 11px; }
+    .drop-zone { border: 1px dashed #1a3050; border-radius: 7px; padding: 18px 12px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; margin-bottom: 9px; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #3a7bd5; background: #050e1a; }
+    .dz-txt { font-size: 11px; color: #2a4060; }
+    .dz-sub { font-size: 10px; color: #1a2535; margin-top: 3px; }
+    .ing-input { width: 100%; background: #070a10; border: 1px solid #1a2535; border-radius: 6px; padding: 6px 9px; font-size: 11px; color: #7a9ab8; font-family: monospace; resize: vertical; outline: none; transition: border-color 0.12s; }
+    .ing-input:focus { border-color: #2a3a5a; }
+    .ing-btn { width: 100%; padding: 7px; background: #0f1c2e; border: 1px solid #2a3a5a; border-radius: 6px; font-size: 11px; color: #5a8ab8; cursor: pointer; transition: all 0.12s; margin-top: 7px; }
+    .ing-btn:hover { background: #152535; color: #7ab3e8; }
+    .ing-btn:active { transform: scale(0.98); }
+    .parsed-list { max-height: 120px; overflow-y: auto; margin-top: 8px; }
+    .parsed-row { display: flex; align-items: center; gap: 7px; padding: 4px 7px; border-radius: 5px; background: #070c14; border: 1px solid #111820; margin-bottom: 3px; font-size: 10px; color: #5a7a9a; font-family: monospace; }
+    .add-btn { padding: 2px 8px; border-radius: 3px; border: 1px solid #1a3050; background: transparent; font-size: 9px; color: #3a6090; cursor: pointer; margin-left: auto; transition: all 0.12s; }
+    .add-btn:hover { background: #0f1c2e; color: #5a8ab8; }
+
+    /* TABLE */
+    .table-view { padding: 16px; overflow-y: auto; flex: 1; }
+    .intel-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+    .intel-table th { text-align: left; padding: 7px 11px; border-bottom: 1px solid #1a2535; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: #2a4060; text-transform: uppercase; background: #090c14; position: sticky; top: 0; }
+    .intel-table td { padding: 8px 11px; border-bottom: 1px solid #0e1520; color: #7a9ab8; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .intel-table tr:hover td { background: #0c1220; }
+    .type-pill { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; }
+    .tp-o { background: #0e2040; color: #3a7bd5; } .tp-h { background: #2a1e08; color: #e8a842; } .tp-i { background: #082018; color: #3dae7a; }
+    .conf-bar { height: 4px; border-radius: 2px; background: #111820; width: 64px; display: inline-block; vertical-align: middle; overflow: hidden; }
+    .conf-fill { height: 4px; border-radius: 2px; }
+
+    /* STATUS BAR */
+    .statusbar { height: 28px; background: #05070c; border-top: 1px solid #1a2535; display: flex; align-items: center; padding: 0 14px; gap: 14px; flex-shrink: 0; }
+    .sb-item { font-size: 10px; color: #1e3040; font-family: monospace; }
+    .sb-item.hi { color: #2a5040; }
+
+    /* NOTIFICATION */
+    .notif { position: absolute; top: 14px; right: 14px; background: #0c1828; border: 1px solid #3dae7a; border-radius: 7px; padding: 9px 14px; font-size: 11px; color: #3dae7a; z-index: 50; display: none; pointer-events: none; }
+    .notif.show { display: block; animation: fadeout 2.5s forwards; }
+    @keyframes fadeout { 0%,60%{opacity:1} 100%{opacity:0} }
+
+    /* LOGIC PANEL */
+    .logic-section { padding: 18px; overflow-y: auto; flex: 1; }
+    .logic-card { background: #0c1220; border: 1px solid #1a2535; border-radius: 9px; padding: 16px; margin-bottom: 12px; }
+    .logic-num { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: #3a7bd5; text-transform: uppercase; margin-bottom: 4px; }
+    .logic-title { font-size: 13px; font-weight: 600; color: #c8daf0; margin-bottom: 6px; }
+    .logic-desc { font-size: 11px; color: #5a7a9a; line-height: 1.7; }
+    .logic-code { background: #070a10; border: 1px solid #1a2535; border-radius: 5px; padding: 8px 10px; font-family: monospace; font-size: 10px; color: #5a9ab8; margin-top: 8px; line-height: 1.6; white-space: pre; overflow-x: auto; }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #070a10; } ::-webkit-scrollbar-thumb { background: #1a2535; border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div id="sfd">
+  <div class="topbar">
+    <span class="topbar-logo">SFD</span>
+    <div class="topbar-sep"></div>
+    <div class="topbar-tabs">
+      <button class="tab active" onclick="switchTab('map',this)">Map View</button>
+      <button class="tab" onclick="switchTab('ingest',this)">Data Ingestion</button>
+      <button class="tab" onclick="switchTab('table',this)">Intel Table</button>
+      <button class="tab" onclick="switchTab('logic',this)">Logic</button>
+    </div>
+    <div class="topbar-right">
+      <div class="live-dot"></div>
+      <span class="live-txt">LIVE</span>
+      <div class="topbar-sep"></div>
+      <span class="clock" id="clk">--:-- UTC</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="sb-section">
+        <div class="sb-label">Sources</div>
+        <div class="src-row on" onclick="toggleSrc('o',this)">
+          <div class="src-dot sd-o"></div>
+          <span class="src-name">OSINT</span>
+          <span class="src-n" id="cnt-o">0</span>
+          <div class="toggle on" id="tog-o"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="src-row on" onclick="toggleSrc('h',this)">
+          <div class="src-dot sd-h"></div>
+          <span class="src-name">HUMINT</span>
+          <span class="src-n" id="cnt-h">0</span>
+          <div class="toggle on" id="tog-h"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="src-row on" onclick="toggleSrc('i',this)">
+          <div class="src-dot sd-i"></div>
+          <span class="src-name">IMINT</span>
+          <span class="src-n" id="cnt-i">0</span>
+          <div class="toggle on" id="tog-i"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+      <div class="sb-stats">
+        <div class="sb-label">Pipeline status</div>
+        <div class="bar-row">
+          <div class="bar-meta"><span class="bar-lbl">OSINT sync</span><span class="bar-val">98%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:98%;background:#3a7bd5"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span class="bar-lbl">HUMINT processed</span><span class="bar-val">74%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:74%;background:#e8a842"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-meta"><span class="bar-lbl">IMINT indexed</span><span class="bar-val">61%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:61%;background:#3dae7a"></div></div>
+        </div>
+      </div>
+      <div class="sb-feed" id="feed">
+        <div class="sb-label">Activity feed</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- MAP VIEW -->
+      <div class="view-panel active" id="panel-map">
+        <div class="map-toolbar">
+          <button class="tbtn active" onclick="setMapMode('terrain',this)">Terrain</button>
+          <button class="tbtn" onclick="setMapMode('satellite',this)">Satellite</button>
+          <button class="tbtn" onclick="setMapMode('heat',this)">Heat map</button>
+          <div style="flex:1"></div>
+          <span class="coord-out" id="coords">--°N --°W</span>
+        </div>
+        <div class="map-wrap" id="mapWrap">
+          <svg class="map-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
+            <defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="#0e1825" stroke-width="0.5"/></pattern></defs>
+            <rect width="800" height="600" fill="url(#g)"/>
+            <path d="M50,140 Q180,118 310,138 Q440,158 570,132 Q680,110 760,125" stroke="#162030" stroke-width="1" fill="none"/>
+            <path d="M40,240 Q170,218 300,238 Q440,258 580,228 Q690,205 760,220" stroke="#162030" stroke-width="1" fill="none"/>
+            <path d="M40,340 Q180,318 320,338 Q460,358 590,328 Q700,305 760,318" stroke="#162030" stroke-width="1" fill="none"/>
+            <path d="M45,440 Q190,418 340,438 Q490,458 610,425 Q710,405 760,418" stroke="#162030" stroke-width="0.6" fill="none"/>
+            <path d="M200,60 Q206,180 195,310 Q184,440 198,580" stroke="#162030" stroke-width="0.5" fill="none"/>
+            <path d="M390,50 Q396,170 385,300 Q374,430 388,575" stroke="#162030" stroke-width="0.5" fill="none"/>
+            <path d="M580,60 Q586,180 574,310 Q562,440 576,580" stroke="#162030" stroke-width="0.5" fill="none"/>
+            <rect x="120" y="155" width="110" height="65" rx="3" fill="#0a1018" stroke="#141e2a" stroke-width="0.5"/>
+            <rect x="320" y="255" width="90" height="55" rx="3" fill="#0a1018" stroke="#141e2a" stroke-width="0.5"/>
+            <rect x="510" y="170" width="110" height="65" rx="3" fill="#0a1018" stroke="#141e2a" stroke-width="0.5"/>
+            <text x="172" y="170" font-size="7" fill="#162535" text-anchor="middle" font-family="monospace">ZONE-ALPHA</text>
+            <text x="360" y="268" font-size="7" fill="#162535" text-anchor="middle" font-family="monospace">ZONE-BRAVO</text>
+            <text x="562" y="184" font-size="7" fill="#162535" text-anchor="middle" font-family="monospace">ZONE-CHARLIE</text>
+            <text x="68" y="140" font-size="8" fill="#0e1e2e" font-family="monospace">34°N</text>
+            <text x="68" y="240" font-size="8" fill="#0e1e2e" font-family="monospace">33°N</text>
+            <text x="68" y="340" font-size="8" fill="#0e1e2e" font-family="monospace">32°N</text>
+            <text x="68" y="440" font-size="8" fill="#0e1e2e" font-family="monospace">31°N</text>
+          </svg>
+          <div id="mapNodes"></div>
+          <div class="map-popup" id="mpp">
+            <div class="pp-head">
+              <div class="src-dot" id="pp-dot"></div>
+              <span class="pp-title" id="pp-title">—</span>
+              <span class="pp-badge" id="pp-badge"></span>
+            </div>
+            <div class="pp-grid">
+              <span class="pk">Lat / Lon</span><span class="pv" id="pp-coords">—</span>
+              <span class="pk">Confidence</span><span class="pv" id="pp-conf">—</span>
+              <span class="pk">Source</span><span class="pv" id="pp-src">—</span>
+              <span class="pk">Ingested</span><span class="pv" id="pp-time">—</span>
+            </div>
+            <div class="pp-img"><span class="pp-img-lbl" id="pp-img">—</span></div>
+          </div>
+          <div class="notif" id="notif"></div>
+        </div>
+      </div>
+
+      <!-- INGESTION -->
+      <div class="view-panel" id="panel-ingest">
+        <div class="ingest-panel">
+          <div class="ingest-grid">
+            <div class="ing-card">
+              <div class="ing-title">OSINT — MongoDB / AWS S3</div>
+              <div class="ing-sub">Automated pull from cloud sources</div>
+              <textarea class="ing-input" id="mongo-in" rows="3" placeholder='{"lat":33.8,"lon":-118.2,"label":"Node X","conf":85}'></textarea>
+              <button class="ing-btn" onclick="ingestJSON()">Ingest JSON document</button>
+              <div class="parsed-list" id="json-parsed"></div>
+            </div>
+            <div class="ing-card">
+              <div class="ing-title">HUMINT — CSV field report</div>
+              <div class="ing-sub">Paste or drag CSV data</div>
+              <div class="drop-zone" id="csv-dz" ondragover="dzOver(event,'csv-dz')" ondragleave="dzOut('csv-dz')" ondrop="dzDrop(event,'csv')" onclick="document.getElementById('csv-in').focus()">
+                <div class="dz-txt">Drop CSV file or click to paste</div>
+                <div class="dz-sub">format: lat, lon, label, confidence</div>
+              </div>
+              <textarea class="ing-input" id="csv-in" rows="2" placeholder="33.5,-117.8,Agent Report,72"></textarea>
+              <button class="ing-btn" onclick="ingestCSV()">Parse &amp; ingest CSV row</button>
+              <div class="parsed-list" id="csv-parsed"></div>
+            </div>
+            <div class="ing-card">
+              <div class="ing-title">IMINT — Satellite / JPEG</div>
+              <div class="ing-sub">Drag image or enter coordinates</div>
+              <div class="drop-zone" id="img-dz" ondragover="dzOver(event,'img-dz')" ondragleave="dzOut('img-dz')" ondrop="dzDrop(event,'img')">
+                <div class="dz-txt">Drop JPG / JPEG / PNG</div>
+                <div class="dz-sub">Image indexed as IMINT node</div>
+              </div>
+              <textarea class="ing-input" id="img-in" rows="2" placeholder="32.9,-117.1,Optical capture,91"></textarea>
+              <button class="ing-btn" onclick="ingestIMINT()">Add IMINT node</button>
+              <div class="parsed-list" id="img-parsed"></div>
+            </div>
+            <div class="ing-card">
+              <div class="ing-title">Bulk ingestion log</div>
+              <div class="ing-sub">All records ingested this session</div>
+              <div class="parsed-list" id="bulk-log" style="max-height:180px"></div>
+              <button class="ing-btn" style="margin-top:10px;color:#c04040;border-color:#2a1010" onclick="clearAll()">Reset to default nodes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="view-panel" id="panel-table">
+        <div class="table-view">
+          <table class="intel-table">
+            <thead>
+              <tr>
+                <th style="width:90px">Type</th>
+                <th style="width:140px">Label</th>
+                <th style="width:130px">Coordinates</th>
+                <th style="width:110px">Confidence</th>
+                <th style="width:110px">Source</th>
+                <th style="width:80px">Time (UTC)</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LOGIC -->
+      <div class="view-panel" id="panel-logic">
+        <div class="logic-section">
+          <div class="logic-card">
+            <div class="logic-num">Logic 01</div>
+            <div class="logic-title">Data ingestion &amp; validation</div>
+            <div class="logic-desc">Every record entering the system must contain a valid latitude (−90 to 90), longitude (−180 to 180), a label string, and a confidence score (0–100). Invalid records are rejected with an error notification before they reach the map.</div>
+            <div class="logic-code">if (!lat || lat < -90 || lat > 90) → reject("Invalid latitude")
+if (!lon || lon < -180 || lon > 180) → reject("Invalid longitude")
+if (!label || label.trim() === "") → reject("Label required")
+if (conf < 0 || conf > 100) → reject("Confidence must be 0–100")</div>
+          </div>
+          <div class="logic-card">
+            <div class="logic-num">Logic 02</div>
+            <div class="logic-title">Node mapping &amp; rendering</div>
+            <div class="logic-desc">Each validated record is converted to a pixel position on the map canvas using a linear interpolation of its lat/lon against the visible map bounding box. Nodes are color-coded: blue (OSINT), amber (HUMINT), green (IMINT).</div>
+            <div class="logic-code">x = (lon - minLon) / (maxLon - minLon) * mapWidth
+y = (maxLat - lat) / (maxLat - minLat) * mapHeight
+color = { osint: "#3a7bd5", humint: "#e8a842", imint: "#3dae7a" }</div>
+          </div>
+          <div class="logic-card">
+            <div class="logic-num">Logic 03</div>
+            <div class="logic-title">Hover-and-view pop-up trigger</div>
+            <div class="logic-desc">When the analyst's cursor enters a node element, a pop-up modal is positioned adjacent to the node and populated with its metadata. The pop-up is repositioned if it would overflow the map boundary. Mouse-leave hides the modal.</div>
+            <div class="logic-code">onMouseEnter(node) → populate popup → check overflow → show
+if (popupRight > mapWidth) → flip popup to left side of node
+if (popupTop < 0) → shift popup below node
+onMouseLeave → hide popup</div>
+          </div>
+          <div class="logic-card">
+            <div class="logic-num">Logic 04</div>
+            <div class="logic-title">Source layer filtering</div>
+            <div class="logic-desc">Each source type (OSINT, HUMINT, IMINT) has an independent visibility toggle. When toggled, the render function filters the node array and redraws only visible nodes. Counts in the sidebar update accordingly.</div>
+            <div class="logic-code">visibleNodes = NODES.filter(n => srcVisibility[n.type] === true)
+renderNodes(visibleNodes)
+updateSidebarCounts(visibleNodes)</div>
+          </div>
+          <div class="logic-card">
+            <div class="logic-num">Logic 05</div>
+            <div class="logic-title">Confidence scoring &amp; color grading</div>
+            <div class="logic-desc">Confidence bars in the Intel Table are color-graded in three tiers: high confidence (≥80%) renders green, medium (60–79%) renders amber, low (&lt;60%) renders red. This gives analysts an instant visual risk signal.</div>
+            <div class="logic-code">if (conf >= 80) → barColor = "#3dae7a"  // green — high
+if (conf >= 60) → barColor = "#e8a842"  // amber — medium
+if (conf <  60) → barColor = "#d05050"  // red   — low</div>
+          </div>
+          <div class="logic-card">
+            <div class="logic-num">Logic 06</div>
+            <div class="logic-title">Duplicate node detection</div>
+            <div class="logic-desc">Before adding a new node, the system checks whether an existing node with the same label and nearly identical coordinates (within 0.01° tolerance) already exists. Duplicates are flagged with a warning rather than silently overwritten.</div>
+            <div class="logic-code">isDuplicate = NODES.some(n =>
+  n.label === newNode.label &&
+  Math.abs(n.lat - newNode.lat) < 0.01 &&
+  Math.abs(n.lon - newNode.lon) < 0.01
+)
+if (isDuplicate) → warn("Duplicate node detected") → abort</div>
+          </div>
+          <div class="logic-card">
+            <div class="logic-num">Logic 07</div>
+            <div class="logic-title">Activity feed &amp; session logging</div>
+            <div class="logic-desc">Every ingestion event is prepended to the live activity feed with a UTC timestamp and source badge. The bulk log tracks all records ingested during the session. A session reset restores the default node set without clearing the feed history.</div>
+            <div class="logic-code">onIngest(node) →
+  feedLog.prepend({ time: utcNow(), type, label })
+  bulkLog.prepend({ label, conf, source })
+  statusBar.update(totalCount, lastLabel)</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span class="sb-item hi" id="st-total">0 nodes</span>
+    <span class="sb-item">|</span>
+    <span class="sb-item hi">OSINT: <span id="st-osint">0</span></span>
+    <span class="sb-item">HUMINT: <span id="st-humint">0</span></span>
+    <span class="sb-item">IMINT: <span id="st-imint">0</span></span>
+    <span class="sb-item" style="margin-left:auto">last ingested: <span id="st-last">—</span></span>
+  </div>
+</div>
+
+<script>
+const NODES = [];
+let srcVis = { o: true, h: true, i: true };
+const colorMap = { o: '#3a7bd5', h: '#e8a842', i: '#3dae7a' };
+const labelMap = { o: 'OSINT', h: 'HUMINT', i: 'IMINT' };
+const srcMap = { o: 'MongoDB', h: 'CSV report', i: 'JPEG upload' };
+
+const defaultNodes = [
+  { id:'A7', type:'o', x:160, y:210, label:'Alpha-7',   coords:'33.8°N 118.4°W', conf:91, src:'MongoDB',     time:'14:32', img:'Satellite scan — Zone Alpha' },
+  { id:'B2', type:'o', x:370, y:175, label:'Bravo-2',   coords:'34.1°N 116.8°W', conf:74, src:'AWS S3',      time:'13:55', img:'Terrain scan 12m resolution' },
+  { id:'C9', type:'o', x:590, y:230, label:'Charlie-9', coords:'33.5°N 115.2°W', conf:88, src:'MongoDB',     time:'11:20', img:'Multispectral image' },
+  { id:'D4', type:'h', x:250, y:310, label:'Delta-4',   coords:'32.9°N 117.1°W', conf:68, src:'CSV field',   time:'13:18', img:'Field photo — ref. DT-44' },
+  { id:'E1', type:'h', x:490, y:360, label:'Echo-1',    coords:'33.2°N 115.7°W', conf:44, src:'JSON manual', time:'09:40', img:'Sketch attachment E1' },
+  { id:'F6', type:'i', x:140, y:410, label:'Foxtrot-6', coords:'32.6°N 118.0°W', conf:96, src:'JPEG upload', time:'12:05', img:'SAR image — Foxtrot site' },
+  { id:'G3', type:'i', x:420, y:460, label:'Golf-3',    coords:'32.3°N 116.3°W', conf:79, src:'JPEG upload', time:'10:30', img:'Optical — 0.5m resolution' },
+  { id:'H5', type:'i', x:660, y:395, label:'Hotel-5',   coords:'33.7°N 114.9°W', conf:85, src:'JPG batch',   time:'08:15', img:'Thermal IR — night capture' },
+  { id:'I8', type:'o', x:320, y:490, label:'India-8',   coords:'31.8°N 117.5°W', conf:71, src:'AWS S3',      time:'07:50', img:'Wide-area scan' },
+];
+defaultNodes.forEach(n => NODES.push(Object.assign({}, n)));
+
+function renderNodes() {
+  const wrap = document.getElementById('mapNodes');
+  wrap.innerHTML = '';
+  NODES.forEach(n => {
+    if (!srcVis[n.type]) return;
+    const el = document.createElement('div');
+    el.className = 'i-node';
+    el.style.cssText = `left:${n.x}px;top:${n.y}px`;
+    el.innerHTML = `<div class="nring ${n.type}"><div class="ndot ${n.type}"></div><div class="pulse ${n.type}"></div></div>`;
+    el.addEventListener('mouseenter', () => showPopup(n, el));
+    el.addEventListener('mouseleave', () => document.getElementById('mpp').classList.remove('show'));
+    wrap.appendChild(el);
+  });
+  updateCounts();
+  renderTable();
+}
+
+function showPopup(n, el) {
+  const pp = document.getElementById('mpp');
+  document.getElementById('pp-dot').style.background = colorMap[n.type];
+  document.getElementById('pp-title').textContent = n.label;
+  const b = document.getElementById('pp-badge');
+  b.textContent = labelMap[n.type];
+  b.className = 'pp-badge ' + (n.type==='o'?'fo':n.type==='h'?'fh':'fi');
+  document.getElementById('pp-coords').textContent = n.coords;
+  document.getElementById('pp-conf').textContent = n.conf + '%';
+  document.getElementById('pp-src').textContent = n.src;
+  document.getElementById('pp-time').textContent = n.time + ' UTC';
+  document.getElementById('pp-img').textContent = n.img || 'No imagery attached';
+  const wrap = document.getElementById('mapWrap');
+  let px = n.x + 20, py = n.y - 80;
+  if (px + 225 > wrap.offsetWidth) px = n.x - 238;
+  if (py < 5) py = n.y + 30;
+  pp.style.left = px + 'px'; pp.style.top = py + 'px';
+  pp.classList.add('show');
+}
+
+function updateCounts() {
+  const co = NODES.filter(n=>n.type==='o').length;
+  const ch = NODES.filter(n=>n.type==='h').length;
+  const ci = NODES.filter(n=>n.type==='i').length;
+  document.getElementById('cnt-o').textContent = co;
+  document.getElementById('cnt-h').textContent = ch;
+  document.getElementById('cnt-i').textContent = ci;
+  document.getElementById('st-total').textContent = NODES.length + ' nodes';
+  document.getElementById('st-osint').textContent = co;
+  document.getElementById('st-humint').textContent = ch;
+  document.getElementById('st-imint').textContent = ci;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  NODES.slice().reverse().forEach(n => {
+    const cfill = n.conf >= 80 ? '#3dae7a' : n.conf >= 60 ? '#e8a842' : '#d05050';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="type-pill ${n.type==='o'?'tp-o':n.type==='h'?'tp-h':'tp-i'}">${labelMap[n.type]}</span></td>
+      <td>${n.label}</td>
+      <td style="font-family:monospace;font-size:10px">${n.coords}</td>
+      <td><span class="conf-bar"><span class="conf-fill" style="width:${n.conf}%;background:${cfill}"></span></span> <span style="font-size:10px;color:#5a7a9a">${n.conf}%</span></td>
+      <td>${n.src}</td>
+      <td style="font-family:monospace;font-size:10px">${n.time}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function addFeedItem(type, msg) {
+  const feed = document.getElementById('feed');
+  const el = document.createElement('div');
+  el.className = 'feed-item';
+  const now = new Date();
+  const t = String(now.getUTCHours()).padStart(2,'0')+':'+String(now.getUTCMinutes()).padStart(2,'0');
+  el.innerHTML = `<div class="fbadge ${type==='o'?'fo':type==='h'?'fh':'fi'}">${labelMap[type]}</div><div class="feed-time">${t} UTC</div><div class="feed-txt">${msg}</div>`;
+  feed.insertBefore(el, feed.children[1]);
+}
+
+function addBulkLog(type, label, conf) {
+  const log = document.getElementById('bulk-log');
+  const el = document.createElement('div');
+  el.className = 'parsed-row';
+  el.innerHTML = `<div class="src-dot ${type==='o'?'sd-o':type==='h'?'sd-h':'sd-i'}"></div><span style="flex:1">${label}</span><span>${conf}%</span>`;
+  log.insertBefore(el, log.firstChild);
+}
+
+function showNotif(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = msg;
+  n.className = 'notif show';
+  setTimeout(() => n.className = 'notif', 2700);
+}
+
+function validateNode(lat, lon, label, conf) {
+  if (isNaN(lat) || lat < -90 || lat > 90) { showNotif('Invalid latitude (must be -90 to 90)'); return false; }
+  if (isNaN(lon) || lon < -180 || lon > 180) { showNotif('Invalid longitude (must be -180 to 180)'); return false; }
+  if (!label || label.trim() === '') { showNotif('Label is required'); return false; }
+  if (isNaN(conf) || conf < 0 || conf > 100) { showNotif('Confidence must be 0–100'); return false; }
+  return true;
+}
+
+function isDuplicate(label, lat, lon) {
+  return NODES.some(n =>
+    n.label === label &&
+    Math.abs((parseFloat(n.coords) || 0) - lat) < 0.01
+  );
+}
+
+function addNode(type, label, lat, lon, conf, src, img) {
+  lat = parseFloat(lat); lon = parseFloat(lon); conf = parseInt(conf) || 50;
+  if (!validateNode(lat, lon, label, conf)) return;
+  const now = new Date();
+  const t = String(now.getUTCHours()).padStart(2,'0')+':'+String(now.getUTCMinutes()).padStart(2,'0');
+  const wrap = document.getElementById('mapWrap');
+  const W = wrap.offsetWidth || 800, H = wrap.offsetHeight || 560;
+  const x = Math.round(80 + Math.random() * (W - 160));
+  const y = Math.round(60 + Math.random() * (H - 120));
+  const latStr = Math.abs(lat).toFixed(2)+(lat>=0?'°N':'°S');
+  const lonStr = Math.abs(lon).toFixed(2)+(lon<0?'°W':'°E');
+  NODES.push({ id:'U'+NODES.length, type, x, y, label, coords:`${latStr} ${lonStr}`, conf, src: src||srcMap[type], time: t, img: img||'Uploaded asset' });
+  renderNodes();
+  addFeedItem(type, `New ${labelMap[type]} node: ${label}`);
+  addBulkLog(type, label, conf);
+  document.getElementById('st-last').textContent = label;
+  showNotif('Node added: ' + label);
+}
+
+function parseRow(raw) {
+  const p = raw.split(',').map(s=>s.trim());
+  return { lat: p[0]||'33.0', lon: p[1]||'-117.0', label: p[2]||'Unnamed', conf: p[3]||'50' };
+}
+
+function ingestJSON() {
+  const raw = document.getElementById('mongo-in').value.trim();
+  if (!raw) { showNotif('Paste a JSON document first'); return; }
+  try {
+    const d = JSON.parse(raw);
+    addNode('o', d.label||d.name||'OSINT node', d.lat||33, d.lon||-117, d.conf||d.confidence||70, 'MongoDB', d.img||null);
+    addParsedRow('json-parsed','o', d.label||'OSINT node', d.conf||70);
+    document.getElementById('mongo-in').value = '';
+  } catch(e) { showNotif('Invalid JSON — check format'); }
+}
+
+function ingestCSV() {
+  const raw = document.getElementById('csv-in').value.trim();
+  if (!raw) { showNotif('Paste a CSV row first'); return; }
+  const {lat,lon,label,conf} = parseRow(raw);
+  addNode('h', label, lat, lon, conf, 'CSV report', 'Field report asset');
+  addParsedRow('csv-parsed','h', label, conf);
+  document.getElementById('csv-in').value = '';
+}
+
+function ingestIMINT() {
+  const raw = document.getElementById('img-in').value.trim();
+  if (!raw) { showNotif('Enter coordinates first'); return; }
+  const {lat,lon,label,conf} = parseRow(raw);
+  addNode('i', label, lat, lon, conf, 'JPEG upload', 'Satellite imagery asset');
+  addParsedRow('img-parsed','i', label, conf);
+  document.getElementById('img-in').value = '';
+}
+
+function addParsedRow(cid, type, label, conf) {
+  const c = document.getElementById(cid);
+  const el = document.createElement('div');
+  el.className = 'parsed-row';
+  el.innerHTML = `<div class="src-dot ${type==='o'?'sd-o':type==='h'?'sd-h':'sd-i'}"></div><span style="flex:1">${label}</span><span>${conf}%</span><button class="add-btn" onclick="this.parentElement.remove()">dismiss</button>`;
+  c.insertBefore(el, c.firstChild);
+}
+
+function clearAll() {
+  NODES.length = 0;
+  defaultNodes.forEach(n => NODES.push(Object.assign({}, n)));
+  renderNodes();
+  showNotif('Reset to default nodes');
+}
+
+function toggleSrc(type, row) {
+  srcVis[type] = !srcVis[type];
+  const tog = document.getElementById('tog-'+type);
+  tog.className = 'toggle ' + (srcVis[type]?'on':'off');
+  row.className = 'src-row ' + (srcVis[type]?'on':'');
+  renderNodes();
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+function setMapMode(m, btn) {
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const bg = { terrain:'#0a1020', satellite:'#060e06', heat:'#120808' };
+  document.getElementById('mapWrap').style.background = bg[m]||'#0a1020';
+}
+
+function dzOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('drag-over'); }
+function dzOut(id) { document.getElementById(id).classList.remove('drag-over'); }
+
+function dzDrop(e, type) {
+  e.preventDefault();
+  dzOut(type==='csv'?'csv-dz':'img-dz');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const name = file.name.replace(/\.[^.]+$/,'');
+  if (type==='csv') {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      ev.target.result.trim().split('\n').forEach(line => {
+        const {lat,lon,label,conf} = parseRow(line);
+        if (lat && lon) addNode('h', label, lat, lon, conf, 'CSV file', 'Field report');
+      });
+    };
+    reader.readAsText(file);
+  } else {
+    addNode('i', name, 33+Math.random(), -117-Math.random(), Math.round(70+Math.random()*25), 'JPEG upload', 'Uploaded: '+file.name);
+  }
+}
+
+const mapWrap = document.getElementById('mapWrap');
+mapWrap.addEventListener('mousemove', e => {
+  const r = mapWrap.getBoundingClientRect();
+  const lat = (34.5 - (e.clientY - r.top) / mapWrap.offsetHeight * 3).toFixed(3);
+  const lon = (-119 + (e.clientX - r.left) / mapWrap.offsetWidth * 5).toFixed(3);
+  document.getElementById('coords').textContent = lat+'°N  '+Math.abs(lon)+'°W';
+});
+
+function tick() {
+  const n = new Date();
+  document.getElementById('clk').textContent =
+    String(n.getUTCHours()).padStart(2,'0')+':'+
+    String(n.getUTCMinutes()).padStart(2,'0')+':'+
+    String(n.getUTCSeconds()).padStart(2,'0')+' UTC';
+}
+setInterval(tick, 1000); tick();
+
+renderNodes();
+addFeedItem('o','MongoDB sync complete — 9 nodes loaded');
+addFeedItem('i','IMINT batch indexed — 3 assets ready');
+addFeedItem('h','CSV field report ingested — 2 records');
+</script>
+</body>
+</html>
